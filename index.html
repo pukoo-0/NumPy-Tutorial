@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NumPy from Zero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #EAF0F3;
+  --surface: #FFFFFF;
+  --ink: #18263A;
+  --muted: #5B6B7E;
+  --line: #C9D5DE;
+  --accent: #2F7D5B;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEFE5;
+  --error: #B4412E;
+  --error-soft: #F7E1DC;
+  --code-bg: #F4F7F9;
+  --out-bg: #18263A;
+  --out-ink: #E3EAF0;
+  --grid: rgba(24, 38, 58, 0.05);
+  --sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F1720; --surface: #16212C; --ink: #E3EAF0; --muted: #93A3B3; --line: #2A3947;
+    --accent: #5FC497; --accent-ink: #0B1B13; --accent-soft: #183A2C; --error: #F08A74; --error-soft: #3A1F1A;
+    --code-bg: #0E1821; --out-bg: #070D13; --out-ink: #CFE0D7; --grid: rgba(227, 234, 240, 0.04);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F1720; --surface: #16212C; --ink: #E3EAF0; --muted: #93A3B3; --line: #2A3947;
+  --accent: #5FC497; --accent-ink: #0B1B13; --accent-soft: #183A2C; --error: #F08A74; --error-soft: #3A1F1A;
+  --code-bg: #0E1821; --out-bg: #070D13; --out-ink: #CFE0D7; --grid: rgba(227, 234, 240, 0.04);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; font-family: var(--sans); font-size: 17px; line-height: 1.55; color: var(--ink);
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+code, pre, textarea { font-family: var(--mono); }
+
+.app { display: grid; grid-template-columns: 280px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; }
+
+.side {
+  position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; padding: 28px 20px 24px; border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+}
+.brand { font-weight: 700; font-size: 1.2rem; margin: 0 0 2px; }
+.brand-sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+.progress { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 22px; }
+.progress-label { font-size: 0.85rem; color: var(--muted); }
+.progress-num { font-family: var(--mono); font-size: 2rem; font-weight: 600; line-height: 1.15; }
+.bar { height: 8px; border-radius: 4px; background: var(--code-bg); border: 1px solid var(--line); overflow: hidden; margin: 8px 0 6px; }
+.bar > div { height: 100%; background: var(--accent); width: 0; transition: width .4s ease; }
+.progress-note { font-size: 0.85rem; color: var(--muted); }
+.modlist { list-style: none; padding: 0; margin: 0; }
+.mod-btn { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 6px; }
+.mod-btn:hover { background: var(--surface); }
+.mod-btn[aria-current="true"] { background: var(--surface); box-shadow: inset 3px 0 0 var(--accent); font-weight: 700; }
+.mod-n { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+.mod-count { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+.mod-count.full { color: var(--accent); font-weight: 600; }
+.engine { margin-top: 20px; font-size: 0.82rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #C9A227; flex: none; }
+.dot.ok { background: var(--accent); }
+.dot.bad { background: var(--error); }
+.reset { margin-top: 14px; background: none; border: 0; padding: 0; color: var(--muted); font-size: 0.82rem; text-decoration: underline; }
+
+main { padding: 32px 40px 80px; min-width: 0; }
+.lesson-head h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.01em; }
+.lesson-head p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+.learn { margin: 22px 0 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.learn > summary { cursor: pointer; padding: 14px 18px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+.learn > summary::-webkit-details-marker { display: none; }
+.learn > summary::after { content: "Show"; font-weight: 400; font-size: 0.85rem; color: var(--muted); text-decoration: underline; }
+.learn[open] > summary::after { content: "Hide"; }
+.learn-body { padding: 4px 18px 18px; }
+.block { padding: 14px 0; border-top: 1px solid var(--line); max-width: 72ch; }
+.block:first-child { border-top: 0; padding-top: 4px; }
+.block-step { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); margin-bottom: 2px; }
+.block p { margin: 0 0 8px; }
+.block p:last-child { margin-bottom: 0; }
+.sample { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 10px 0 6px; font-size: 14px; }
+.sample pre { margin: 0; padding: 10px 12px; white-space: pre; overflow-x: auto; }
+.sample .s-code { background: var(--code-bg); }
+.sample .s-out { background: var(--out-bg); color: var(--out-ink); }
+.sample .s-tag { display: block; font-family: var(--sans); font-size: 0.72rem; opacity: 0.7; margin-bottom: 4px; }
+.sample.solo { grid-template-columns: 1fr; }
+code.i { background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 0.88em; white-space: nowrap; }
+.tip { background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-size: 0.95rem; }
+.try-head { margin: 18px 0 8px; font-weight: 700; }
+
+.ex-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.steps { display: flex; gap: 6px; }
+.step { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); font-family: var(--mono); font-size: 0.85rem; display: grid; place-items: center; }
+.step[aria-current="true"] { border-color: var(--ink); border-width: 2px; }
+.step.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.ex-title { font-size: 1.3rem; margin: 0; }
+
+.task { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; max-width: 78ch; }
+.task p { margin: 0 0 8px; }
+.task p:last-child { margin-bottom: 0; }
+
+.editor-wrap { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--code-bg); }
+.editor-wrap:focus-within { border-color: var(--accent); }
+.editor-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 12px; font-size: 0.8rem; color: var(--muted); border-bottom: 1px solid var(--line); }
+textarea.code { display: block; width: 100%; min-height: 160px; resize: vertical; border: 0; outline: none; padding: 14px 16px; background: transparent; color: var(--ink); font-size: 15px; line-height: 1.55; tab-size: 4; white-space: pre; overflow-x: auto; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.btn { border-radius: 8px; padding: 9px 16px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; font-size: 0.95rem; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: none; border-color: transparent; font-weight: 400; text-decoration: underline; padding-left: 6px; padding-right: 6px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+.console { border-radius: 12px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
+.console-head { padding: 8px 14px; font-size: 0.85rem; font-weight: 700; border-bottom: 1px solid var(--line); }
+.console pre { margin: 0; padding: 12px 14px; font-size: 14px; white-space: pre-wrap; word-break: break-word; min-height: 48px; max-height: 320px; overflow: auto; }
+.console.pass { border-color: var(--accent); }
+.console.pass .console-head { background: var(--accent-soft); }
+.console.fail .console-head { background: var(--error-soft); }
+.verdict { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 0.95rem; }
+.verdict.pass { color: var(--accent); font-weight: 700; }
+.verdict.fail { color: var(--error); }
+.err-line { color: var(--error); }
+
+.helper { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px dashed var(--line); max-width: 78ch; }
+.helper h3 { font-size: 0.95rem; margin: 0 0 6px; }
+.helper p { margin: 0; }
+.helper pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; margin: 8px 0 0; }
+
+.next-row { display: flex; justify-content: space-between; margin-top: 22px; gap: 10px; }
+.finish { background: var(--accent-soft); border-radius: 12px; padding: 18px 20px; margin-top: 22px; max-width: 78ch; }
+.finish h2 { margin: 0 0 6px; font-size: 1.2rem; }
+.finish p { margin: 0; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 18px 16px 12px; }
+  .progress { padding: 10px 12px; margin-bottom: 12px; }
+  .progress-num { font-size: 1.5rem; }
+  .modlist { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 6px; }
+  .mod-btn { white-space: nowrap; grid-template-columns: auto auto auto; }
+  .mod-btn[aria-current="true"] { box-shadow: inset 0 -3px 0 var(--accent); }
+  main { padding: 22px 16px 60px; }
+  .lesson-head h1 { font-size: 1.6rem; }
+  .sample { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-label="Lessons">
+    <p class="brand">NumPy from Zero</p>
+    <p class="brand-sub">Learn NumPy by typing, one small step at a time. Know basic Python first.</p>
+    <div class="progress" aria-live="polite">
+      <div class="progress-label">Progress</div>
+      <div class="progress-num" id="pct">0%</div>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <div class="progress-note" id="pct-note">0 exercises solved</div>
+    </div>
+    <ul class="modlist" id="modlist"></ul>
+    <div class="engine"><span class="dot" id="engine-dot"></span><span id="engine-text">Starting Python and NumPy…</span></div>
+    <button class="reset" id="reset">Reset all progress</button>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const PRELUDE = "\nimport numpy as np\ndef expect(cond, msg):\n    if not cond:\n        raise AssertionError(msg)\ndef near(a, b, tol=1e-6):\n    try:\n        return abs(float(a) - float(b)) <= tol\n    except Exception:\n        return False\ndef lines():\n    return [l.strip() for l in __output__.strip().splitlines() if l.strip()]\ndef defined(name):\n    return name in globals()\ndef is_arr(x):\n    return isinstance(x, np.ndarray)\ndef same(a, b, tol=1e-6):\n    try:\n        a = np.asarray(a)\n        b = np.asarray(b)\n        if a.shape != b.shape:\n            return False\n        if a.dtype.kind in \"fc\" or b.dtype.kind in \"fc\":\n            return bool(np.allclose(a, b, atol=tol))\n        return a.tolist() == b.tolist()\n    except Exception:\n        return False\n";
+
+const MODULES = [{"id": "n1", "title": "Why NumPy?", "blurb": "Meet arrays: lists that can do maths on every number at once.", "learn": [{"t": "<p><b>NumPy<\/b> is a <b>library<\/b>: a pack of extra tools that doesn’t come built into Python. Scientists, engineers and data analysts use it every day to work with lots of numbers quickly.<\/p><p>To use a library, you <b>import<\/b> it at the top of your code. Everyone writes <code class='i'>import numpy as np<\/code>, which means “load NumPy, and let me call it <code class='i'>np<\/code> for short.”<\/p>", "code": "import numpy as np\nprint(\"NumPy is ready\")", "out": "NumPy is ready"}, {"t": "<p>The heart of NumPy is the <b>array<\/b>. It looks like a list, but it’s built for numbers. You make one by giving a list to <code class='i'>np.array()<\/code>.<\/p><p>Notice that NumPy prints arrays <b>without commas<\/b>. That’s how you can tell an array from a list.<\/p>", "code": "import numpy as np\nprices = np.array([2, 5, 10])\nprint(prices)", "out": "[ 2  5 10]"}, {"t": "<p>Here’s why arrays matter. Multiplying a <b>list<\/b> by 2 repeats the list. Multiplying an <b>array<\/b> by 2 multiplies <b>every number<\/b> inside it.<\/p>", "code": "import numpy as np\nmy_list = [1, 2, 3]\nmy_array = np.array([1, 2, 3])\nprint(my_list * 2)\nprint(my_array * 2)", "out": "[1, 2, 3, 1, 2, 3]\n[2 4 6]"}, {"t": "<p>With plain Python, you’d need a loop to change every number. With NumPy, <b>one line<\/b> does it. This is called <b>vectorization<\/b>, and it’s also much faster when you have thousands of numbers.<\/p>", "code": "import numpy as np\n\n# Plain Python: a loop\nprices = [10, 20, 30]\nwith_tax = []\nfor p in prices:\n    with_tax.append(p * 1.1)\nprint(with_tax)\n\n# NumPy: one line\nprices = np.array([10, 20, 30])\nprint(prices * 1.1)", "out": "[11.0, 22.0, 33.0]\n[11. 22. 33.]"}, {"t": "<p>An array holds only <b>one type<\/b> of value. If you mix whole numbers and decimals, NumPy turns everything into decimals. The dot after a number, like <code class='i'>1.<\/code>, means <code class='i'>1.0<\/code>.<\/p>", "code": "import numpy as np\nprint(np.array([1, 2.5, 3]))", "out": "[1.  2.5 3. ]"}], "playground": "import numpy as np\nheights_cm = np.array([150, 165, 180])\nprint(heights_cm / 100)\nprint(heights_cm + 5)", "exercises": [{"id": "1a", "title": "Your first array", "task": "<p>Make an array called <code class='i'>scores<\/code> containing 70, 85, 90 and 60. Print it.<\/p>", "starter": "import numpy as np\n", "hint": "scores = np.array([70, 85, 90, 60])", "solution": "import numpy as np\nscores = np.array([70, 85, 90, 60])\nprint(scores)", "check": "expect(defined(\"scores\"), \"Create a variable called scores\")\nexpect(is_arr(scores), \"scores should be a NumPy array. Use np.array([...])\")\nexpect(same(scores, [70, 85, 90, 60]), \"scores should contain 70, 85, 90, 60 in that order\")"}, {"id": "1b", "title": "Convert all at once", "task": "<p>Convert every temperature in <code class='i'>celsius<\/code> to Fahrenheit in <b>one line<\/b>, without a loop. Store it in <code class='i'>fahrenheit<\/code> and print it.<\/p><p>Formula: F = C × 9 ÷ 5 + 32<\/p>", "starter": "import numpy as np\ncelsius = np.array([0, 25, 37, 100])\n", "hint": "fahrenheit = celsius * 9 / 5 + 32", "solution": "import numpy as np\ncelsius = np.array([0, 25, 37, 100])\nfahrenheit = celsius * 9 / 5 + 32\nprint(fahrenheit)", "check": "expect(\"for\" not in __code__, \"No loop needed. Do the maths on the whole array\")\nexpect(defined(\"fahrenheit\") and same(fahrenheit, [32, 77, 98.6, 212]), \"fahrenheit should be [32, 77, 98.6, 212]\")"}, {"id": "1c", "title": "List to array", "task": "<p><code class='i'>prices<\/code> is a normal Python list. Turn it into an array, then add 10% tax to every price (multiply by 1.1). Store the result in <code class='i'>with_tax<\/code> and print it.<\/p>", "starter": "import numpy as np\nprices = [10, 20, 30, 45]\n", "hint": "First: prices = np.array(prices). Then: with_tax = prices * 1.1", "solution": "import numpy as np\nprices = [10, 20, 30, 45]\nprices = np.array(prices)\nwith_tax = prices * 1.1\nprint(with_tax)", "check": "expect(defined(\"with_tax\") and is_arr(with_tax), \"with_tax should be a NumPy array. Convert prices with np.array() first\")\nexpect(same(with_tax, [11, 22, 33, 49.5]), \"with_tax should be [11, 22, 33, 49.5]\")"}]}, {"id": "n2", "title": "Making arrays", "blurb": "Create arrays without typing every number.", "learn": [{"t": "<p><code class='i'>np.arange(start, stop, step)<\/code> works like <code class='i'>range()<\/code>, but gives you an array. Just like <code class='i'>range<\/code>, it stops <b>before<\/b> the stop number.<\/p>", "code": "import numpy as np\nprint(np.arange(5))\nprint(np.arange(2, 10))\nprint(np.arange(0, 20, 5))", "out": "[0 1 2 3 4]\n[2 3 4 5 6 7 8 9]\n[ 0  5 10 15]"}, {"t": "<p><code class='i'>np.linspace(start, stop, count)<\/code> gives you <b>evenly spaced<\/b> numbers. You choose how many you want, and the stop number <b>is included<\/b>.<\/p><p>It’s perfect for things like “11 time points between 0 and 1 second”.<\/p>", "code": "import numpy as np\nprint(np.linspace(0, 1, 5))", "out": "[0.   0.25 0.5  0.75 1.  ]"}, {"t": "<p>To start with an array that’s already filled, use <code class='i'>np.zeros(n)<\/code> (all 0), <code class='i'>np.ones(n)<\/code> (all 1), or <code class='i'>np.full(n, value)<\/code> (all the same value you choose).<\/p>", "code": "import numpy as np\nprint(np.zeros(4))\nprint(np.ones(3))\nprint(np.full(3, 7))", "out": "[0. 0. 0. 0.]\n[1. 1. 1.]\n[7 7 7]"}, {"t": "<p>Arrays know facts about themselves. You read them with a dot, and <b>without brackets<\/b>, because they’re information, not actions:<\/p><p><code class='i'>.size<\/code> is how many numbers there are. <code class='i'>.shape<\/code> is the layout (you’ll need it for tables later). <code class='i'>.dtype<\/code> is the type of number inside (<code class='i'>float64<\/code> means decimals).<\/p>", "code": "import numpy as np\na = np.array([1.5, 2.0, 3.5])\nprint(a.size)\nprint(a.shape)\nprint(a.dtype)", "out": "3\n(3,)\nfloat64"}], "playground": "import numpy as np\nx = np.linspace(0, 10, 6)\nprint(x)\nprint(x.size)", "exercises": [{"id": "2a", "title": "Even numbers", "task": "<p>Use <code class='i'>np.arange<\/code> to make <code class='i'>evens<\/code>: all even numbers from 0 up to and <b>including<\/b> 20. Print it.<\/p>", "starter": "import numpy as np\n", "hint": "Count in steps of 2. Since arange stops before the stop number, use 21 (or 22) as the stop.", "solution": "import numpy as np\nevens = np.arange(0, 21, 2)\nprint(evens)", "check": "expect(\"arange\" in __code__, \"Use np.arange\")\nexpect(defined(\"evens\") and same(evens, list(range(0, 21, 2))), \"evens should be 0, 2, 4, ... 20\")"}, {"id": "2b", "title": "Time points", "task": "<p>Make <code class='i'>times<\/code>: 11 evenly spaced numbers from 0 to 5 (both included). Print it.<\/p>", "starter": "import numpy as np\n", "hint": "np.linspace(0, 5, 11)", "solution": "import numpy as np\ntimes = np.linspace(0, 5, 11)\nprint(times)", "check": "expect(defined(\"times\") and same(times, [i * 0.5 for i in range(11)]), \"times should be 0, 0.5, 1.0, ... 5.0 (11 numbers)\")"}, {"id": "2c", "title": "A filled array", "task": "<p>Make <code class='i'>levels<\/code>: an array of 6 values, all equal to 7. Then store its size in <code class='i'>n<\/code> and print both.<\/p>", "starter": "import numpy as np\n", "hint": "levels = np.full(6, 7), then n = levels.size", "solution": "import numpy as np\nlevels = np.full(6, 7)\nn = levels.size\nprint(levels, n)", "check": "expect(defined(\"levels\") and same(levels, [7] * 6), \"levels should be six 7s. Use np.full\")\nexpect(defined(\"n\") and n == 6, \"n should be 6. Use levels.size\")"}]}, {"id": "n3", "title": "Array maths", "blurb": "Do calculations on whole arrays in one line.", "learn": [{"t": "<p>When you combine an array with a <b>single number<\/b>, NumPy applies it to every item. All the normal operators work: <code class='i'>+ - * / **<\/code>.<\/p>", "code": "import numpy as np\na = np.array([1, 2, 3, 4])\nprint(a + 10)\nprint(a ** 2)", "out": "[11 12 13 14]\n[ 1  4  9 16]"}, {"t": "<p>When you combine <b>two arrays<\/b> of the same length, NumPy pairs them up <b>by position<\/b>: first with first, second with second, and so on.<\/p>", "code": "import numpy as np\nprice = np.array([2.0, 3.5, 1.0])\nquantity = np.array([3, 2, 10])\nprint(price * quantity)", "out": "[ 6.  7. 10.]"}, {"t": "<p>The two arrays must be the <b>same length<\/b>. If not, NumPy can’t pair them up and gives an error. The word “shapes” in the error means the sizes of your arrays.<\/p>", "code": "import numpy as np\na = np.array([1, 2, 3])\nb = np.array([10, 20])\nprint(a + b)", "out": "ValueError: operands could not be broadcast together with shapes (3,) (2,) "}, {"t": "<p>NumPy has maths functions that work on every item: <code class='i'>np.sqrt()<\/code> square root, <code class='i'>np.abs()<\/code> removes minus signs, <code class='i'>np.round(a, digits)<\/code> rounds, plus <code class='i'>np.exp()<\/code> and <code class='i'>np.log()<\/code> for science work.<\/p>", "code": "import numpy as np\na = np.array([4, 9, 16])\nprint(np.sqrt(a))\nprint(np.abs(np.array([-3, 5, -1])))\nprint(np.round(np.array([1.234, 5.678]), 1))", "out": "[2. 3. 4.]\n[3 5 1]\n[1.2 5.7]"}, {"t": "<p class='tip'>Use NumPy’s versions on arrays: <code class='i'>np.round(a)<\/code>, not <code class='i'>round(a)<\/code>. Python’s own <code class='i'>round()<\/code> only works on one number.<\/p>"}], "playground": "import numpy as np\nwidth = np.array([2, 3, 5])\nheight = np.array([4, 4, 1])\narea = width * height\nprint(area)\nprint(np.sqrt(area))", "exercises": [{"id": "3a", "title": "Shopping totals", "task": "<p>Calculate the cost of each item (price × quantity). Store it in <code class='i'>totals<\/code> and print it.<\/p>", "starter": "import numpy as np\nprices = np.array([1.5, 4.0, 0.8, 12.0])\nquantities = np.array([4, 1, 10, 2])\n", "hint": "totals = prices * quantities", "solution": "import numpy as np\nprices = np.array([1.5, 4.0, 0.8, 12.0])\nquantities = np.array([4, 1, 10, 2])\ntotals = prices * quantities\nprint(totals)", "check": "expect(\"for\" not in __code__, \"No loop needed\")\nexpect(defined(\"totals\") and same(totals, [6, 4, 8, 24]), \"totals should be [6, 4, 8, 24]\")"}, {"id": "3b", "title": "Average speeds", "task": "<p>Speed = distance ÷ time. Calculate <code class='i'>speeds<\/code> for all trips, rounded to 1 decimal place. Print it.<\/p>", "starter": "import numpy as np\ndistances_km = np.array([120, 45, 300])\nhours = np.array([1.5, 0.7, 3.2])\n", "hint": "speeds = np.round(distances_km / hours, 1)", "solution": "import numpy as np\ndistances_km = np.array([120, 45, 300])\nhours = np.array([1.5, 0.7, 3.2])\nspeeds = np.round(distances_km / hours, 1)\nprint(speeds)", "check": "expect(defined(\"speeds\") and same(speeds, [80.0, 64.3, 93.8]), \"speeds should be [80.0, 64.3, 93.8]. Did you round to 1 decimal?\")"}, {"id": "3c", "title": "Squares and diagonals", "task": "<p>For each square side length, calculate <code class='i'>areas<\/code> (side²) and <code class='i'>diagonals<\/code> (side × √2, rounded to 2 decimals). Print both.<\/p>", "starter": "import numpy as np\nsides = np.array([1, 3, 5, 10])\n", "hint": "areas = sides ** 2 and diagonals = np.round(sides * np.sqrt(2), 2)", "solution": "import numpy as np\nsides = np.array([1, 3, 5, 10])\nareas = sides ** 2\ndiagonals = np.round(sides * np.sqrt(2), 2)\nprint(areas)\nprint(diagonals)", "check": "expect(defined(\"areas\") and same(areas, [1, 9, 25, 100]), \"areas should be [1, 9, 25, 100]\")\nexpect(defined(\"diagonals\") and same(diagonals, [1.41, 4.24, 7.07, 14.14]), \"diagonals should be [1.41, 4.24, 7.07, 14.14]\")"}]}, {"id": "n4", "title": "Statistics", "blurb": "Summarise a lot of numbers with a few words.", "learn": [{"t": "<p>Arrays have built-in tools to summarise them: <code class='i'>.sum()<\/code>, <code class='i'>.mean()<\/code> (the average), <code class='i'>.min()<\/code> and <code class='i'>.max()<\/code>.<\/p><p>These are actions, so they <b>do<\/b> need brackets.<\/p>", "code": "import numpy as np\nscores = np.array([70, 85, 90, 60])\nprint(scores.sum())\nprint(scores.mean())\nprint(scores.min(), scores.max())", "out": "305\n76.25\n60 90"}, {"t": "<p><code class='i'>.std()<\/code> is the <b>standard deviation<\/b>: how spread out the numbers are. Small means the numbers are close together.<\/p><p><code class='i'>np.median()<\/code> is the middle value when sorted. It has no dot version, so write it as a function.<\/p>", "code": "import numpy as np\na = np.array([10, 11, 9, 10])\nb = np.array([1, 20, 5, 14])\nprint(a.std(), b.std())\nprint(np.median(b))", "out": "0.7071067811865476 7.44983221287567\n9.5"}, {"t": "<p>The median is useful when there are extreme values. One huge number pulls the mean up a lot, but barely moves the median.<\/p>", "code": "import numpy as np\nsalaries = np.array([30, 32, 35, 31, 500])\nprint(salaries.mean())\nprint(np.median(salaries))", "out": "125.6\n32.0"}, {"t": "<p><code class='i'>.argmax()<\/code> and <code class='i'>.argmin()<\/code> don’t give the biggest or smallest <b>value<\/b>. They give its <b>position<\/b>. That’s useful for looking up the matching item in another array.<\/p>", "code": "import numpy as np\ndays = np.array([\"Mon\", \"Tue\", \"Wed\"])\nrain = np.array([3, 12, 7])\npos = rain.argmax()\nprint(pos)\nprint(days[pos])", "out": "1\nTue"}, {"t": "<p><code class='i'>.cumsum()<\/code> gives a <b>running total<\/b>: each number is the sum of everything up to that point.<\/p>", "code": "import numpy as np\nsaved = np.array([10, 20, 5, 15])\nprint(saved.cumsum())", "out": "[10 30 35 50]"}], "playground": "import numpy as np\nsteps = np.array([4200, 8100, 12000, 6500, 9800])\nprint(steps.mean())\nprint(steps.max())\nprint(steps.cumsum())", "exercises": [{"id": "4a", "title": "Test results", "task": "<p>Find the <code class='i'>average<\/code>, <code class='i'>highest<\/code> and <code class='i'>lowest<\/code> score. Print all three.<\/p>", "starter": "import numpy as np\nscores = np.array([78, 92, 65, 88, 71, 95])\n", "hint": "scores.mean(), scores.max(), scores.min()", "solution": "import numpy as np\nscores = np.array([78, 92, 65, 88, 71, 95])\naverage = scores.mean()\nhighest = scores.max()\nlowest = scores.min()\nprint(average, highest, lowest)", "check": "expect(defined(\"average\") and near(average, 81.5), \"average should be 81.5\")\nexpect(defined(\"highest\") and highest == 95, \"highest should be 95\")\nexpect(defined(\"lowest\") and lowest == 65, \"lowest should be 65\")"}, {"id": "4b", "title": "Best month", "task": "<p>Find the name of the month with the highest sales. Store it in <code class='i'>best_month<\/code> and print it.<\/p>", "starter": "import numpy as np\nmonths = np.array([\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\"])\nsales = np.array([120, 340, 210, 405, 390])\n", "hint": "First find the position with sales.argmax(), then use it as an index: months[...]", "solution": "import numpy as np\nmonths = np.array([\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\"])\nsales = np.array([120, 340, 210, 405, 390])\nbest_month = months[sales.argmax()]\nprint(best_month)", "check": "expect(\"argmax\" in __code__, \"Use argmax to find the position\")\nexpect(defined(\"best_month\") and str(best_month) == \"Apr\", \"best_month should be Apr\")"}, {"id": "4c", "title": "Mean vs median", "task": "<p>One house in this street is a mansion. Calculate <code class='i'>mean_price<\/code> and <code class='i'>median_price<\/code> and print both. Which one better describes a typical house?<\/p>", "starter": "import numpy as np\nprices = np.array([210, 195, 230, 205, 2400, 220])\n", "hint": "prices.mean() and np.median(prices)", "solution": "import numpy as np\nprices = np.array([210, 195, 230, 205, 2400, 220])\nmean_price = prices.mean()\nmedian_price = np.median(prices)\nprint(mean_price, median_price)", "check": "expect(defined(\"mean_price\") and near(mean_price, 576.6666667, 1e-4), \"mean_price should be about 576.67\")\nexpect(defined(\"median_price\") and near(median_price, 215), \"median_price should be 215. Use np.median()\")"}]}, {"id": "n5", "title": "Picking items", "blurb": "Get exactly the numbers you want out of an array.", "learn": [{"t": "<p>Picking one item works just like lists. Positions start at 0, and <code class='i'>-1<\/code> is the last item.<\/p>", "code": "import numpy as np\na = np.array([10, 20, 30, 40, 50])\nprint(a[0])\nprint(a[-1])", "out": "10\n50"}, {"t": "<p>A <b>slice<\/b> takes a piece: <code class='i'>a[start:stop]<\/code>, where stop is not included. Leave a side empty to mean “from the beginning” or “to the end”.<\/p>", "code": "import numpy as np\na = np.array([10, 20, 30, 40, 50])\nprint(a[1:4])\nprint(a[:2])\nprint(a[-2:])", "out": "[20 30 40]\n[10 20]\n[40 50]"}, {"t": "<p>Add a third number for the <b>step<\/b>: <code class='i'>a[::2]<\/code> takes every second item. A step of <code class='i'>-1<\/code> goes backwards, which reverses the array.<\/p>", "code": "import numpy as np\na = np.array([10, 20, 30, 40, 50])\nprint(a[::2])\nprint(a[::-1])", "out": "[10 30 50]\n[50 40 30 20 10]"}, {"t": "<p>You can change items by assigning to a position or a slice. Assigning one number to a slice sets <b>all<\/b> of them.<\/p>", "code": "import numpy as np\na = np.array([10, 20, 30, 40, 50])\na[0] = 99\na[2:4] = 0\nprint(a)", "out": "[99 20  0  0 50]"}, {"t": "<p class='tip'><b>Watch out:<\/b> a slice is not a separate copy. It’s a <b>window<\/b> into the original array, so changing the slice changes the original too. Use <code class='i'>.copy()<\/code> when you want a separate array.<\/p>", "code": "import numpy as np\noriginal = np.array([1, 2, 3, 4])\npart = original[:2]\npart[0] = 100\nprint(original)\n\nsafe = original.copy()\nsafe[1] = 0\nprint(original)", "out": "[100   2   3   4]\n[100   2   3   4]"}], "playground": "import numpy as np\nletters = np.array([\"a\", \"b\", \"c\", \"d\", \"e\", \"f\"])\nprint(letters[2:5])\nprint(letters[::2])\nprint(letters[::-1])", "exercises": [{"id": "5a", "title": "Beginning and end", "task": "<p>Store the first three values in <code class='i'>first_three<\/code> and the last two in <code class='i'>last_two<\/code>. Print both.<\/p>", "starter": "import numpy as np\ndata = np.array([5, 8, 13, 21, 34, 55, 89])\n", "hint": "data[:3] and data[-2:]", "solution": "import numpy as np\ndata = np.array([5, 8, 13, 21, 34, 55, 89])\nfirst_three = data[:3]\nlast_two = data[-2:]\nprint(first_three)\nprint(last_two)", "check": "expect(defined(\"first_three\") and same(first_three, [5, 8, 13]), \"first_three should be [5, 8, 13]\")\nexpect(defined(\"last_two\") and same(last_two, [55, 89]), \"last_two should be [55, 89]\")"}, {"id": "5b", "title": "Skip and reverse", "task": "<p>Store every second value (starting from the first) in <code class='i'>every_other<\/code>, and the whole array reversed in <code class='i'>backwards<\/code>.<\/p>", "starter": "import numpy as np\na = np.arange(1, 11)\n", "hint": "a[::2] and a[::-1]", "solution": "import numpy as np\na = np.arange(1, 11)\nevery_other = a[::2]\nbackwards = a[::-1]\nprint(every_other)\nprint(backwards)", "check": "expect(defined(\"every_other\") and same(every_other, [1, 3, 5, 7, 9]), \"every_other should be [1, 3, 5, 7, 9]\")\nexpect(defined(\"backwards\") and same(backwards, list(range(10, 0, -1))), \"backwards should be 10, 9, ... 1\")"}, {"id": "5c", "title": "Fix a copy, keep the original", "task": "<p>The first and last sensor readings are broken. Make <code class='i'>cleaned<\/code> as a <b>copy<\/b> of <code class='i'>readings<\/code>, then set its first and last values to 0.<\/p><p>The original <code class='i'>readings<\/code> must stay unchanged.<\/p>", "starter": "import numpy as np\nreadings = np.array([999, 21, 22, 20, 23, -999])\n", "hint": "cleaned = readings.copy(), then cleaned[0] = 0 and cleaned[-1] = 0", "solution": "import numpy as np\nreadings = np.array([999, 21, 22, 20, 23, -999])\ncleaned = readings.copy()\ncleaned[0] = 0\ncleaned[-1] = 0\nprint(cleaned)\nprint(readings)", "check": "expect(defined(\"cleaned\") and same(cleaned, [0, 21, 22, 20, 23, 0]), \"cleaned should be [0, 21, 22, 20, 23, 0]\")\nexpect(same(readings, [999, 21, 22, 20, 23, -999]), \"readings changed too! Use .copy() so the original stays the same\")"}]}, {"id": "n6", "title": "Filtering", "blurb": "Keep only the numbers that match a rule.", "learn": [{"t": "<p>Comparing an array with a number checks <b>every item<\/b> and gives back an array of <code class='i'>True<\/code> and <code class='i'>False<\/code>. This is called a <b>mask<\/b>.<\/p>", "code": "import numpy as np\ntemps = np.array([28, 33, 25, 35])\nprint(temps > 30)", "out": "[False  True False  True]"}, {"t": "<p>Put the mask inside square brackets to <b>keep only the True items<\/b>. Read <code class='i'>temps[temps > 30]<\/code> as “temps, where temps is above 30”.<\/p>", "code": "import numpy as np\ntemps = np.array([28, 33, 25, 35])\nprint(temps[temps > 30])", "out": "[33 35]"}, {"t": "<p>To <b>count<\/b> matches, add up the mask: True counts as 1 and False as 0. The mean of a mask is the <b>fraction<\/b> that matched.<\/p>", "code": "import numpy as np\ntemps = np.array([28, 33, 25, 35])\nprint((temps > 30).sum())\nprint((temps > 30).mean())", "out": "2\n0.5"}, {"t": "<p>To combine rules, use <code class='i'>&amp;<\/code> for “and” and <code class='i'>|<\/code> for “or”. Put <b>brackets around each rule<\/b>.<\/p><p class='tip'>Python’s normal <code class='i'>and<\/code> / <code class='i'>or<\/code> don’t work with arrays. They cause an error about “truth value… is ambiguous”.<\/p>", "code": "import numpy as np\nages = np.array([12, 25, 40, 70, 17])\nprint(ages[(ages >= 18) & (ages < 65)])\nprint(ages[(ages < 18) | (ages >= 65)])", "out": "[25 40]\n[12 70 17]"}, {"t": "<p><code class='i'>np.where(rule, if_true, if_false)<\/code> picks a value for each item, depending on whether the rule is true.<\/p>", "code": "import numpy as np\nscores = np.array([45, 80, 62])\nprint(np.where(scores >= 50, \"pass\", \"fail\"))", "out": "['fail' 'pass' 'pass']"}, {"t": "<p>You can also <b>change<\/b> only the matching items, by assigning to the masked array.<\/p>", "code": "import numpy as np\na = np.array([5, -2, 8, -7])\na[a < 0] = 0\nprint(a)", "out": "[5 0 8 0]"}], "playground": "import numpy as np\nprices = np.array([3, 15, 8, 22, 5])\nprint(prices > 10)\nprint(prices[prices > 10])\nprint((prices > 10).sum())", "exercises": [{"id": "6a", "title": "Hot days", "task": "<p>Store the temperatures above 30 in <code class='i'>hot_days<\/code>, and how many there are in <code class='i'>n_hot<\/code>. Print both.<\/p>", "starter": "import numpy as np\ntemps = np.array([29, 31, 35, 28, 33, 30, 26])\n", "hint": "hot_days = temps[temps > 30], and n_hot = (temps > 30).sum()", "solution": "import numpy as np\ntemps = np.array([29, 31, 35, 28, 33, 30, 26])\nhot_days = temps[temps > 30]\nn_hot = (temps > 30).sum()\nprint(hot_days, n_hot)", "check": "expect(\"for\" not in __code__, \"No loop needed. Use a mask\")\nexpect(defined(\"hot_days\") and same(hot_days, [31, 35, 33]), \"hot_days should be [31, 35, 33]. Note: 30 is not above 30\")\nexpect(defined(\"n_hot\") and n_hot == 3, \"n_hot should be 3\")"}, {"id": "6b", "title": "Working age", "task": "<p>Keep only the ages from 18 up to (but not including) 65. Store them in <code class='i'>working<\/code> and print it.<\/p>", "starter": "import numpy as np\nages = np.array([15, 22, 67, 45, 18, 64, 80, 9])\n", "hint": "ages[(ages >= 18) & (ages < 65)]. Don’t forget the brackets around each rule.", "solution": "import numpy as np\nages = np.array([15, 22, 67, 45, 18, 64, 80, 9])\nworking = ages[(ages >= 18) & (ages < 65)]\nprint(working)", "check": "expect(\"&\" in __code__, \"Combine the two rules with &\")\nexpect(defined(\"working\") and same(working, [22, 45, 18, 64]), \"working should be [22, 45, 18, 64]\")"}, {"id": "6c", "title": "Pass or fail", "task": "<p>Make <code class='i'>results<\/code>: <code class='i'>\"pass\"<\/code> for each score of 50 or more, and <code class='i'>\"fail\"<\/code> otherwise. Print it.<\/p>", "starter": "import numpy as np\nscores = np.array([72, 45, 50, 38, 91])\n", "hint": "np.where(scores >= 50, \"pass\", \"fail\")", "solution": "import numpy as np\nscores = np.array([72, 45, 50, 38, 91])\nresults = np.where(scores >= 50, \"pass\", \"fail\")\nprint(results)", "check": "expect(defined(\"results\") and same(results, [\"pass\", \"fail\", \"pass\", \"fail\", \"pass\"]), \"results should be pass, fail, pass, fail, pass\")"}, {"id": "6d", "title": "Remove negative errors", "task": "<p>The sensor sometimes records impossible negative values. Set every negative value in <code class='i'>readings<\/code> to 0, directly in the array. Print it.<\/p>", "starter": "import numpy as np\nreadings = np.array([4.2, -1.0, 3.8, -0.5, 5.1])\n", "hint": "readings[readings < 0] = 0", "solution": "import numpy as np\nreadings = np.array([4.2, -1.0, 3.8, -0.5, 5.1])\nreadings[readings < 0] = 0\nprint(readings)", "check": "expect(same(readings, [4.2, 0, 3.8, 0, 5.1]), \"readings should be [4.2, 0, 3.8, 0, 5.1]\")"}]}, {"id": "n7", "title": "Tables (2D arrays)", "blurb": "Work with rows and columns, like a spreadsheet.", "learn": [{"t": "<p>So far, arrays were a single row of numbers. A <b>2D array<\/b> is a table with rows and columns. Make one from a list of lists: each inner list is one row.<\/p>", "code": "import numpy as np\nscores = np.array([\n    [70, 80, 90],\n    [60, 75, 85],\n])\nprint(scores)", "out": "[[70 80 90]\n [60 75 85]]"}, {"t": "<p><code class='i'>.shape<\/code> tells you the size of the table as <b>(rows, columns)<\/b>. This table has 2 rows (students) and 3 columns (tests).<\/p>", "code": "import numpy as np\nscores = np.array([[70, 80, 90], [60, 75, 85]])\nprint(scores.shape)", "out": "(2, 3)"}, {"t": "<p>To get one item, give the <b>row<\/b> and then the <b>column<\/b>, separated by a comma: <code class='i'>scores[row, column]<\/code>. Both start counting at 0.<\/p><p>One number on its own, like <code class='i'>scores[0]<\/code>, gives you the whole row.<\/p>", "code": "import numpy as np\nscores = np.array([[70, 80, 90], [60, 75, 85]])\nprint(scores[1, 2])\nprint(scores[0])", "out": "85\n[70 80 90]"}, {"t": "<p>To get a whole <b>column<\/b>, use <code class='i'>:<\/code> for the row. A colon on its own means “all of them”, so <code class='i'>scores[:, 1]<\/code> reads as “all rows, column 1”.<\/p>", "code": "import numpy as np\nscores = np.array([[70, 80, 90], [60, 75, 85]])\nprint(scores[:, 1])", "out": "[80 75]"}, {"t": "<p>Summaries can work along a direction using <code class='i'>axis<\/code>:<\/p><p><code class='i'>axis=0<\/code> goes <b>down<\/b> the rows, giving one answer <b>per column<\/b>. <code class='i'>axis=1<\/code> goes <b>across<\/b> the columns, giving one answer <b>per row<\/b>. Without axis, you get one answer for the whole table.<\/p>", "code": "import numpy as np\nscores = np.array([[70, 80, 90], [60, 75, 85]])\nprint(scores.mean(axis=0))\nprint(scores.mean(axis=1))\nprint(scores.mean())", "out": "[65.  77.5 87.5]\n[80.         73.33333333]\n76.66666666666667"}, {"t": "<p><code class='i'>.reshape(rows, columns)<\/code> rearranges the same numbers into a new layout. The total count must stay the same: 6 numbers can be 2×3 or 3×2, but not 4×2.<\/p>", "code": "import numpy as np\na = np.arange(6)\nprint(a.reshape(2, 3))", "out": "[[0 1 2]\n [3 4 5]]"}], "playground": "import numpy as np\ntable = np.arange(1, 13).reshape(3, 4)\nprint(table)\nprint(table[:, 0])\nprint(table.sum(axis=1))", "exercises": [{"id": "7a", "title": "Rows and columns", "task": "<p>Each row is a student, each column is a test. Store:<\/p><p><code class='i'>shape<\/code>: the shape of the table. <code class='i'>first_student<\/code>: the whole first row. <code class='i'>test2<\/code>: all scores from the second test (column 1).<\/p>", "starter": "import numpy as np\nscores = np.array([\n    [72, 88, 65, 90],\n    [85, 79, 92, 70],\n    [60, 95, 78, 84],\n])\n", "hint": "scores.shape, scores[0], and scores[:, 1]", "solution": "import numpy as np\nscores = np.array([\n    [72, 88, 65, 90],\n    [85, 79, 92, 70],\n    [60, 95, 78, 84],\n])\nshape = scores.shape\nfirst_student = scores[0]\ntest2 = scores[:, 1]\nprint(shape, first_student, test2)", "check": "expect(defined(\"shape\") and tuple(shape) == (3, 4), \"shape should be (3, 4)\")\nexpect(defined(\"first_student\") and same(first_student, [72, 88, 65, 90]), \"first_student should be the first row\")\nexpect(defined(\"test2\") and same(test2, [88, 79, 95]), \"test2 should be [88, 79, 95]. Use scores[:, 1]\")"}, {"id": "7b", "title": "Averages both ways", "task": "<p>Using the same table, calculate <code class='i'>student_avg<\/code> (one average per student) and <code class='i'>test_avg<\/code> (one average per test).<\/p>", "starter": "import numpy as np\nscores = np.array([\n    [72, 88, 65, 90],\n    [85, 79, 92, 70],\n    [60, 95, 78, 84],\n])\n", "hint": "One per student means one per row: axis=1. One per test means one per column: axis=0.", "solution": "import numpy as np\nscores = np.array([\n    [72, 88, 65, 90],\n    [85, 79, 92, 70],\n    [60, 95, 78, 84],\n])\nstudent_avg = scores.mean(axis=1)\ntest_avg = scores.mean(axis=0)\nprint(student_avg)\nprint(test_avg)", "check": "expect(defined(\"student_avg\") and same(student_avg, [78.75, 81.5, 79.25]), \"student_avg should have 3 values (one per row). Use axis=1\")\nexpect(defined(\"test_avg\") and same(test_avg, [72.33333333, 87.33333333, 78.33333333, 81.33333333], 1e-6), \"test_avg should have 4 values (one per column). Use axis=0\")"}, {"id": "7c", "title": "Build a table", "task": "<p>Make the numbers 1 to 12 with <code class='i'>np.arange<\/code>, then reshape them into a table with 3 rows and 4 columns called <code class='i'>table<\/code>.<\/p><p>Then store the number in the bottom-right corner in <code class='i'>corner<\/code>.<\/p>", "starter": "import numpy as np\n", "hint": "table = np.arange(1, 13).reshape(3, 4). The bottom-right is the last row and last column: table[-1, -1]", "solution": "import numpy as np\ntable = np.arange(1, 13).reshape(3, 4)\ncorner = table[-1, -1]\nprint(table)\nprint(corner)", "check": "expect(defined(\"table\") and is_arr(table) and table.shape == (3, 4), \"table should have shape (3, 4)\")\nexpect(same(table, [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]), \"table should contain 1 to 12, row by row\")\nexpect(defined(\"corner\") and corner == 12, \"corner should be 12\")"}]}, {"id": "n8", "title": "Handy tools", "blurb": "A few more tools you’ll use all the time.", "learn": [{"t": "<p><code class='i'>np.sort()<\/code> gives a sorted copy. <code class='i'>np.unique()<\/code> gives each different value once, already sorted.<\/p>", "code": "import numpy as np\na = np.array([3, 1, 3, 2, 1])\nprint(np.sort(a))\nprint(np.unique(a))", "out": "[1 1 2 3 3]\n[1 2 3]"}, {"t": "<p><code class='i'>np.concatenate()<\/code> joins arrays end to end. Notice the extra square brackets: you give it a <b>list of arrays<\/b>.<\/p>", "code": "import numpy as np\nweek1 = np.array([5, 7, 6])\nweek2 = np.array([8, 4])\nprint(np.concatenate([week1, week2]))", "out": "[5 7 6 8 4]"}, {"t": "<p><code class='i'>np.interp(x, xs, ys)<\/code> estimates a value <b>between<\/b> known points by drawing a straight line between them. This is called interpolation.<\/p><p>Example: you know the price at 1 kg and 2 kg, and want to estimate 1.5 kg.<\/p>", "code": "import numpy as np\nweights = np.array([1, 2, 3])\nprices = np.array([4, 6, 10])\nprint(np.interp(1.5, weights, prices))\nprint(np.interp(2.5, weights, prices))", "out": "5.0\n8.0"}, {"t": "<p>NumPy can make <b>random numbers<\/b>. First make a generator with <code class='i'>np.random.default_rng()<\/code>. Giving it a number (a “seed”) makes the same random numbers every time, which is handy for testing.<\/p><p><code class='i'>rng.integers(low, high, size=n)<\/code> gives n whole numbers from low up to, but not including, high.<\/p>", "code": "import numpy as np\nrng = np.random.default_rng(42)\ndice = rng.integers(1, 7, size=10)\nprint(dice.size)\nprint(dice.min() >= 1, dice.max() <= 6)", "out": "10\nTrue True"}, {"t": "<p>Random numbers are great for <b>simulations<\/b>: instead of rolling a die 1000 times, let NumPy do it and use filtering to count the results.<\/p>"}], "playground": "import numpy as np\nrng = np.random.default_rng()\ncoins = rng.integers(0, 2, size=20)\nprint(coins)\nprint(\"Heads:\", (coins == 1).sum())", "exercises": [{"id": "8a", "title": "Unique colours", "task": "<p>Find each different colour once and store it in <code class='i'>unique_colors<\/code>. Store how many there are in <code class='i'>n_colors<\/code>.<\/p>", "starter": "import numpy as np\ncolors = np.array([\"red\", \"blue\", \"red\", \"green\", \"blue\", \"red\"])\n", "hint": "np.unique(colors), then .size", "solution": "import numpy as np\ncolors = np.array([\"red\", \"blue\", \"red\", \"green\", \"blue\", \"red\"])\nunique_colors = np.unique(colors)\nn_colors = unique_colors.size\nprint(unique_colors, n_colors)", "check": "expect(defined(\"unique_colors\") and same(unique_colors, [\"blue\", \"green\", \"red\"]), \"unique_colors should be blue, green, red\")\nexpect(defined(\"n_colors\") and n_colors == 3, \"n_colors should be 3\")"}, {"id": "8b", "title": "Join two months", "task": "<p>Join the two months of rainfall into <code class='i'>all_days<\/code>, then store its average in <code class='i'>avg_rain<\/code>.<\/p>", "starter": "import numpy as np\njune = np.array([0, 5, 12, 0, 3])\njuly = np.array([8, 0, 0, 20])\n", "hint": "np.concatenate([june, july]), then .mean()", "solution": "import numpy as np\njune = np.array([0, 5, 12, 0, 3])\njuly = np.array([8, 0, 0, 20])\nall_days = np.concatenate([june, july])\navg_rain = all_days.mean()\nprint(all_days, avg_rain)", "check": "expect(defined(\"all_days\") and same(all_days, [0, 5, 12, 0, 3, 8, 0, 0, 20]), \"all_days should be june followed by july\")\nexpect(defined(\"avg_rain\") and near(avg_rain, 48 / 9), \"avg_rain should be about 5.33\")"}, {"id": "8c", "title": "Estimate in between", "task": "<p>A delivery company charges by weight. Estimate the price for a 2.5 kg parcel and store it in <code class='i'>price<\/code>.<\/p>", "starter": "import numpy as np\nweights = np.array([1, 2, 3, 5])\nprices = np.array([5.0, 7.0, 11.0, 15.0])\n", "hint": "np.interp(2.5, weights, prices)", "solution": "import numpy as np\nweights = np.array([1, 2, 3, 5])\nprices = np.array([5.0, 7.0, 11.0, 15.0])\nprice = np.interp(2.5, weights, prices)\nprint(price)", "check": "expect(\"interp\" in __code__, \"Use np.interp\")\nexpect(defined(\"price\") and near(price, 9.0), \"price should be 9.0\")"}, {"id": "8d", "title": "Dice simulation", "task": "<p>Simulate rolling a die 1000 times: make <code class='i'>rolls<\/code> with 1000 random whole numbers from 1 to 6.<\/p><p>Then count how many sixes you got in <code class='i'>sixes<\/code>, and the fraction of sixes in <code class='i'>share<\/code>. It should be close to 1/6 ≈ 0.167.<\/p>", "starter": "import numpy as np\nrng = np.random.default_rng()\n", "hint": "rolls = rng.integers(1, 7, size=1000). Then use the mask (rolls == 6) with .sum() and .mean()", "solution": "import numpy as np\nrng = np.random.default_rng()\nrolls = rng.integers(1, 7, size=1000)\nsixes = (rolls == 6).sum()\nshare = (rolls == 6).mean()\nprint(sixes, share)", "check": "expect(defined(\"rolls\") and is_arr(rolls) and rolls.size == 1000, \"rolls should have 1000 numbers\")\nexpect(rolls.min() >= 1 and rolls.max() <= 6, \"rolls should only contain 1 to 6. Remember: high is not included, so use 7\")\nexpect(defined(\"sixes\") and sixes == (rolls == 6).sum(), \"sixes should count how many rolls equal 6\")\nexpect(defined(\"share\") and near(share, (rolls == 6).mean()), \"share should be sixes divided by 1000\")"}]}];
+
+/* ---------- State ---------- */
+const STORE_KEY = "npzero-progress-v1";
+let state = { done: {}, code: {}, mod: 0, ex: 0 };
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+  if (saved && typeof saved === "object") state = Object.assign(state, saved);
+} catch (e) {}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+const ALL_EX = MODULES.flatMap(m => m.exercises.map(x => x.id));
+const TOTAL = ALL_EX.length;
+
+/* ---------- Python engine (Pyodide: real Python + NumPy in the browser) ---------- */
+let engine = "loading";
+let py = null;
+const BRIDGE = `
+import io, json, contextlib
+def _run(code, check):
+    buf = io.StringIO()
+    ns = {"__name__": "__main__"}
+    err = ""
+    try:
+        compiled = compile(code, "<your code>", "exec")
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            exec(compiled, ns)
+    except SyntaxError as e:
+        err = type(e).__name__ + (" on line " + str(e.lineno) if e.lineno else "") + ": " + str(e.msg)
+    except Exception as e:
+        line = None
+        tb = e.__traceback__
+        while tb is not None:
+            if tb.tb_frame.f_code.co_filename == "<your code>":
+                line = tb.tb_lineno
+            tb = tb.tb_next
+        err = type(e).__name__ + (" on line " + str(line) if line else "") + ": " + str(e)
+    text = buf.getvalue()
+    ok = False
+    msg = ""
+    if not err and check:
+        ns["__output__"] = text
+        ns["__code__"] = code
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                exec(check, ns)
+            ok = True
+        except AssertionError as e:
+            msg = str(e)
+        except Exception as e:
+            msg = "While testing your code: " + type(e).__name__ + ": " + str(e)
+    return json.dumps({"ok": ok, "out": text, "err": err, "msg": msg})
+`;
+function setEngine(kind, detail) {
+  engine = kind;
+  const dot = document.getElementById("engine-dot");
+  const txt = document.getElementById("engine-text");
+  dot.className = "dot" + (kind === "ready" ? " ok" : kind === "none" ? " bad" : "");
+  txt.textContent = kind === "ready" ? "Python and NumPy are ready"
+    : kind === "none" ? "Python couldn’t start" + (detail ? " (" + detail + ")" : "") + ". Check your internet connection and reload."
+    : kind === "numpy" ? "Loading NumPy…"
+    : "Starting Python… (the first time takes 10–20 seconds)";
+}
+async function initPy() {
+  setTimeout(() => { if (engine !== "ready" && engine !== "none") setEngine("none", "took longer than 90 seconds"); }, 90000);
+  try {
+    if (typeof loadPyodide !== "function") throw new Error("Pyodide script not loaded");
+    py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/" });
+    setEngine("numpy");
+    await py.loadPackage("numpy");
+    py.runPython(BRIDGE);
+    if (engine !== "none") setEngine("ready"); else setEngine("ready");
+  } catch (e) {
+    console.error(e);
+    setEngine("none", String((e && e.message) || e).slice(0, 140));
+  }
+}
+function runPython(code, check) {
+  if (engine !== "ready") return Promise.resolve({ ok: false, out: "", err: "", msg: "Python is still starting. Wait a few seconds and try again." });
+  return new Promise(resolve => {
+    setTimeout(() => {
+      try {
+        const fn = py.globals.get("_run");
+        const raw = fn(code, check ? PRELUDE + "\n" + check : "");
+        fn.destroy();
+        resolve(JSON.parse(raw));
+      } catch (e) {
+        resolve({ ok: false, out: "", err: "Something went wrong running your code: " + e.message, msg: "" });
+      }
+    }, 30);
+  });
+}
+
+const FRIENDLY = {
+  NameError: "Python doesn’t know this name. Check the spelling, or create the variable before using it.",
+  TypeError: "You mixed types that don’t go together, like text + number. Convert with int(), float() or str().",
+  IndexError: "That list position doesn’t exist. Positions start at 0, and the last one is -1.",
+  ValueError: "The type is right but the value isn’t, like int(\"abc\").",
+  ZeroDivisionError: "You divided by zero, which isn’t possible.",
+  SyntaxError: "Python can’t read this line. Look for a missing colon, bracket, or quote.",
+  IndentationError: "The spaces at the start of a line are wrong. Lines inside if, for, while and def need 4 spaces.",
+  KeyError: "That key isn’t in the dictionary. Check the spelling and capital letters.",
+  AttributeError: "This value doesn’t have that tool. Check the spelling after the dot.",
+  ModuleNotFoundError: "That library isn’t available here. This course only has NumPy."
+};
+function friendlyFor(err) {
+  if (/could not be broadcast/.test(err)) return "Your arrays have different sizes, so NumPy can’t pair them up. Check each one’s .shape.";
+  if (/truth value of an array/.test(err)) return "Use & and | (with brackets around each rule) instead of and / or when working with arrays.";
+  if (/cannot reshape/.test(err)) return "The new shape needs the same total number of items. Rows × columns must equal the array’s size.";
+  if (/name 'np' is not defined/.test(err)) return "Add import numpy as np at the top of your code.";
+  if (/too many indices/.test(err)) return "You used more positions than the array has dimensions. A 1D array only needs one number in the brackets.";
+  const name = (err.match(/^(\w+)/) || [])[1];
+  return FRIENDLY[name] || "Read the error name above. It tells you what kind of problem it is.";
+}
+
+/* ---------- Progress ---------- */
+function doneCount() { return ALL_EX.filter(id => state.done[id]).length; }
+function renderProgress() {
+  const k = doneCount();
+  const pct = Math.round(k / TOTAL * 100);
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("bar-fill").style.width = pct + "%";
+  document.getElementById("pct-note").textContent = k === TOTAL ? `All ${TOTAL} exercises solved` : `${k} of ${TOTAL} exercises solved`;
+}
+
+/* ---------- Sidebar ---------- */
+function renderSidebar() {
+  const ul = document.getElementById("modlist");
+  ul.innerHTML = "";
+  MODULES.forEach((m, i) => {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.className = "mod-btn";
+    b.setAttribute("aria-current", i === state.mod ? "true" : "false");
+    const n = document.createElement("span"); n.className = "mod-n"; n.textContent = String(i + 1);
+    const t = document.createElement("span"); t.textContent = m.title;
+    const c = document.createElement("span"); c.className = "mod-count";
+    const k = m.exercises.filter(x => state.done[x.id]).length;
+    c.textContent = `${k}/${m.exercises.length}`;
+    if (k === m.exercises.length) c.classList.add("full");
+    b.append(n, t, c);
+    b.addEventListener("click", () => { state.mod = i; state.ex = 0; save(); render(); window.scrollTo(0, 0); });
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+/* ---------- Editor ---------- */
+function makeEditor(value, onChange, onSubmit) {
+  const ta = document.createElement("textarea");
+  ta.className = "code"; ta.spellcheck = false; ta.autocapitalize = "off"; ta.autocomplete = "off";
+  ta.setAttribute("autocorrect", "off");
+  ta.setAttribute("aria-label", "Code editor");
+  ta.value = value;
+  const fit = () => { ta.style.height = "auto"; ta.style.height = Math.max(140, ta.scrollHeight + 4) + "px"; };
+  ta.addEventListener("input", () => { onChange && onChange(ta.value); fit(); });
+  ta.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); onSubmit && onSubmit(); return; }
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s) + "    " + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 4;
+      onChange && onChange(ta.value); fit();
+    } else if (e.key === "Enter") {
+      const s = ta.selectionStart;
+      const lineStart = ta.value.lastIndexOf("\n", s - 1) + 1;
+      const line = ta.value.slice(lineStart, s);
+      let indent = (line.match(/^ */) || [""])[0];
+      if (/:\s*$/.test(line)) indent += "    ";
+      if (indent) {
+        e.preventDefault();
+        ta.value = ta.value.slice(0, s) + "\n" + indent + ta.value.slice(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = s + 1 + indent.length;
+        onChange && onChange(ta.value); fit();
+      }
+    }
+  });
+  requestAnimationFrame(fit);
+  return ta;
+}
+
+function makeConsole() {
+  const con = document.createElement("div");
+  con.className = "console";
+  con.innerHTML = `<div class="console-head">Output</div><pre aria-live="polite">Press Run to see what your code prints.</pre><div class="verdict" hidden></div>`;
+  return con;
+}
+
+function showResult(con, res, isCheck) {
+  con.className = "console";
+  const head = con.querySelector(".console-head");
+  const pre = con.querySelector("pre");
+  const verdict = con.querySelector(".verdict");
+  pre.textContent = "";
+  if (res.out) pre.append(document.createTextNode(res.out));
+  if (res.err) {
+    const s = document.createElement("span"); s.className = "err-line";
+    s.textContent = (res.out && !res.out.endsWith("\n") ? "\n" : "") + res.err;
+    pre.append(s);
+  }
+  if (!res.out && !res.err && !isCheck && !res.msg) pre.textContent = "(your code ran, but nothing was printed)";
+  verdict.hidden = true; verdict.className = "verdict";
+  if (res.err) {
+    head.textContent = "Error";
+    con.classList.add("fail");
+    verdict.hidden = false; verdict.classList.add("fail");
+    verdict.textContent = friendlyFor(res.err);
+  } else if (isCheck) {
+    head.textContent = res.ok ? "Correct" : "Not yet";
+    con.classList.add(res.ok ? "pass" : "fail");
+    verdict.hidden = false; verdict.classList.add(res.ok ? "pass" : "fail");
+    verdict.textContent = res.ok ? "Well done. Exercise solved." : (res.msg || "Not quite. Compare your output with the task.");
+  } else {
+    head.textContent = "Output";
+    if (res.msg) { verdict.hidden = false; verdict.textContent = res.msg; }
+  }
+}
+
+/* ---------- Main render ---------- */
+function render() {
+  renderSidebar(); renderProgress();
+  const m = MODULES[state.mod];
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  const head = document.createElement("div"); head.className = "lesson-head";
+  const h1 = document.createElement("h1"); h1.textContent = `${state.mod + 1}. ${m.title}`;
+  const p = document.createElement("p"); p.textContent = m.blurb;
+  head.append(h1, p); main.appendChild(head);
+
+  // Learn section
+  const det = document.createElement("details"); det.className = "learn";
+  det.open = !m.exercises.some(x => state.done[x.id]);
+  const sum = document.createElement("summary"); sum.textContent = "Learn this first";
+  const body = document.createElement("div"); body.className = "learn-body";
+  m.learn.forEach((b, i) => {
+    const blk = document.createElement("div"); blk.className = "block";
+    const step = document.createElement("div"); step.className = "block-step"; step.textContent = `Step ${i + 1} of ${m.learn.length}`;
+    const txt = document.createElement("div"); txt.innerHTML = b.t;
+    blk.append(step, txt);
+    if (b.code) {
+      const s = document.createElement("div"); s.className = "sample" + (b.out ? "" : " solo");
+      const c = document.createElement("pre"); c.className = "s-code";
+      c.innerHTML = "<span class='s-tag'>Code</span>"; c.append(document.createTextNode(b.code));
+      s.appendChild(c);
+      if (b.out) {
+        const o = document.createElement("pre"); o.className = "s-out";
+        o.innerHTML = "<span class='s-tag'>What it shows</span>"; o.append(document.createTextNode(b.out));
+        s.appendChild(o);
+      }
+      blk.appendChild(s);
+    }
+    body.appendChild(blk);
+  });
+  // Playground
+  const tryHead = document.createElement("p"); tryHead.className = "try-head"; tryHead.textContent = "Try it yourself: run this, change something, run it again.";
+  let pgCode = m.playground;
+  const pgWrap = document.createElement("div"); pgWrap.className = "editor-wrap";
+  const pgBar = document.createElement("div"); pgBar.className = "editor-bar"; pgBar.innerHTML = "<span>Playground</span><span>Nothing here is graded</span>";
+  const pgCon = makeConsole();
+  const runPg = async () => { pgCon.querySelector("pre").textContent = "Running…"; showResult(pgCon, await runPython(pgCode, ""), false); };
+  const pgTa = makeEditor(pgCode, v => pgCode = v, runPg);
+  pgWrap.append(pgBar, pgTa);
+  const pgActions = document.createElement("div"); pgActions.className = "actions";
+  const pgRun = document.createElement("button"); pgRun.className = "btn"; pgRun.textContent = "Run";
+  pgRun.addEventListener("click", runPg);
+  pgActions.appendChild(pgRun);
+  body.append(tryHead, pgWrap, pgActions, pgCon);
+  det.append(sum, body); main.appendChild(det);
+
+  // Exercise
+  if (state.ex >= m.exercises.length) state.ex = 0;
+  const ex = m.exercises[state.ex];
+
+  const nav = document.createElement("div"); nav.className = "ex-nav";
+  const steps = document.createElement("div"); steps.className = "steps";
+  m.exercises.forEach((x, i) => {
+    const b = document.createElement("button"); b.className = "step" + (state.done[x.id] ? " done" : "");
+    b.textContent = state.done[x.id] ? "✓" : String(i + 1);
+    b.setAttribute("aria-label", `Exercise ${i + 1}${state.done[x.id] ? ", solved" : ""}`);
+    b.setAttribute("aria-current", i === state.ex ? "true" : "false");
+    b.addEventListener("click", () => { state.ex = i; save(); render(); });
+    steps.appendChild(b);
+  });
+  const t = document.createElement("h2"); t.className = "ex-title"; t.textContent = `Exercise: ${ex.title}`;
+  nav.append(steps, t); main.appendChild(nav);
+
+  const task = document.createElement("div"); task.className = "task"; task.innerHTML = ex.task;
+  main.appendChild(task);
+
+  let code = state.code[ex.id] != null ? state.code[ex.id] : ex.starter;
+  const wrap = document.createElement("div"); wrap.className = "editor-wrap";
+  const bar = document.createElement("div"); bar.className = "editor-bar";
+  bar.innerHTML = "<span>Your code</span><span>Ctrl/⌘ + Enter to check</span>";
+  const con = makeConsole();
+  const helper = document.createElement("div"); helper.className = "helper"; helper.hidden = true;
+
+  const actions = document.createElement("div"); actions.className = "actions";
+  const runBtn = document.createElement("button"); runBtn.className = "btn"; runBtn.textContent = "Run";
+  const checkBtn = document.createElement("button"); checkBtn.className = "btn primary"; checkBtn.textContent = "Check answer";
+  const hintBtn = document.createElement("button"); hintBtn.className = "btn"; hintBtn.textContent = "Hint";
+  const solBtn = document.createElement("button"); solBtn.className = "btn"; solBtn.textContent = "Solution";
+  const resetBtn = document.createElement("button"); resetBtn.className = "btn ghost"; resetBtn.textContent = "Reset code";
+
+  const nextRow = document.createElement("div"); nextRow.className = "next-row";
+  const prevBtn = document.createElement("button"); prevBtn.className = "btn"; prevBtn.textContent = "Previous";
+  const nextBtn = document.createElement("button");
+  const isLastEx = state.ex === m.exercises.length - 1;
+  const isLastMod = state.mod === MODULES.length - 1;
+  nextBtn.className = "btn" + (state.done[ex.id] ? " primary" : "");
+  nextBtn.textContent = isLastEx ? (isLastMod ? "Back to start" : "Next lesson") : "Next exercise";
+  prevBtn.disabled = state.mod === 0 && state.ex === 0;
+
+  const doRun = async () => {
+    con.querySelector("pre").textContent = "Running…";
+    showResult(con, await runPython(code, ""), false);
+  };
+  const doCheck = async () => {
+    checkBtn.disabled = true;
+    con.querySelector("pre").textContent = "Checking…";
+    const res = await runPython(code, ex.check);
+    checkBtn.disabled = false;
+    showResult(con, res, true);
+    if (res.ok) {
+      nextBtn.classList.add("primary");
+      if (!state.done[ex.id]) {
+        state.done[ex.id] = true; save(); renderSidebar(); renderProgress();
+        const b = steps.children[state.ex]; b.classList.add("done"); b.textContent = "✓";
+        if (doneCount() === TOTAL) showFinish();
+      }
+    }
+  };
+  const ta = makeEditor(code, v => { code = v; state.code[ex.id] = v; save(); }, doCheck);
+  wrap.append(bar, ta); main.appendChild(wrap);
+
+  runBtn.addEventListener("click", doRun);
+  checkBtn.addEventListener("click", doCheck);
+  hintBtn.addEventListener("click", () => {
+    helper.hidden = false; helper.innerHTML = "<h3>Hint</h3>";
+    const p = document.createElement("p"); p.textContent = ex.hint; helper.appendChild(p);
+  });
+  solBtn.addEventListener("click", () => {
+    helper.hidden = false;
+    helper.innerHTML = "<h3>Solution</h3><p>Read it, understand each line, then type it yourself instead of copying. That’s how it sticks.</p>";
+    const pre = document.createElement("pre"); pre.textContent = ex.solution; helper.appendChild(pre);
+  });
+  resetBtn.addEventListener("click", () => {
+    code = ex.starter; ta.value = code; delete state.code[ex.id]; save(); ta.dispatchEvent(new Event("input"));
+  });
+  actions.append(runBtn, checkBtn, hintBtn, solBtn, resetBtn);
+  main.append(actions, con, helper);
+
+  prevBtn.addEventListener("click", () => {
+    if (state.ex > 0) state.ex--; else { state.mod--; state.ex = MODULES[state.mod].exercises.length - 1; }
+    save(); render(); window.scrollTo(0, 0);
+  });
+  nextBtn.addEventListener("click", () => {
+    if (!isLastEx) state.ex++;
+    else if (isLastMod) { state.mod = 0; state.ex = 0; }
+    else { state.mod++; state.ex = 0; }
+    save(); render(); window.scrollTo(0, 0);
+  });
+  nextRow.append(prevBtn, nextBtn);
+  main.appendChild(nextRow);
+
+  function showFinish() {
+    const f = document.createElement("div"); f.className = "finish";
+    f.innerHTML = "<h2>You finished every exercise</h2><p>You can now create arrays, do maths on them, summarise them, pick and filter values, and work with tables. That’s the core of NumPy, and the base for pandas, Matplotlib and data science in Python.</p>";
+    main.appendChild(f);
+  }
+  if (doneCount() === TOTAL) showFinish();
+}
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("Erase all progress and saved code?")) return;
+  state = { done: {}, code: {}, mod: 0, ex: 0 }; save(); render();
+});
+
+if (state.mod >= MODULES.length) state.mod = 0;
+render();
+setEngine("loading");
+initPy();
+</script>
+
+</body>
+</html>
